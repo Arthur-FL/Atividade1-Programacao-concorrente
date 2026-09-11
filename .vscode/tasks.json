@@ -8,7 +8,6 @@
                 "-fdiagnostics-color=always",
                 "-g",
                 "${file}",
-                "-pthread",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"
             ],

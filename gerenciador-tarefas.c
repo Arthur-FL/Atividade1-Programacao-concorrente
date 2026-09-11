@@ -13,10 +13,11 @@ int tarefaConcluida = 0;
 int tarefasExec = 0;
 int tarefasEspera = THREAD_NUM;
 
-pthread_mutex_t updtConclusao;
-pthread_mutex_t updtExec;
+sem_t updtConclusao; // Semáforo para controlar a atualização das tarefas concluídas
 
-void* auxiliar(void* arg) {
+sem_t updtExec; // Semáforo para controlar a atualização das tarefas em execução em um dado momento
+
+void* auxiliar(void* arg) { // Função para informar status das tarefas
     while(tarefaConcluida < THREAD_NUM) {
         sleep(10);
         printf("\nTarefas Concluídas: %d \n"
@@ -29,19 +30,20 @@ void* tarefa(void* arg) {
     printf("[Tarefa %d] Aguardando execução.\n", *(int*)arg);
     sem_wait(&controlador); // A tarefa tenta iniciar a execução. Se os 4 espaços de execução não estiverem preenchidos, o semáforo aprova.
 
-    pthread_mutex_lock(&updtExec); 
+    sem_wait(&updtExec);
     tarefasExec++; // Controla quantas tarefas estão em execução no momento
-    pthread_mutex_unlock(&updtExec);
+    sem_post(&updtExec);
     printf("[Tarefa %d] Execução iniciada.\n", *(int*)arg);
     sleep(7);
 
     printf("[Tarefa %d] Finalizada.\n", *(int*)arg);
-    pthread_mutex_lock(&updtConclusao);
+    sem_wait(&updtConclusao);
     tarefaConcluida++; // Controla quantas tarefas foram concluídas
-    pthread_mutex_unlock(&updtConclusao);
-    pthread_mutex_lock(&updtExec);
+    sem_post(&updtConclusao);
+
+    sem_wait(&updtExec);
     tarefasExec--; // Antes de terminar a excução, garante a corretude do valor
-    pthread_mutex_unlock(&updtExec);
+    sem_post(&updtExec);
     sem_post(&controlador); // Após concluir a execução, a tarefa informa a finalização e o semáforo é incrementado, liberando seu espaço de execução
     free(arg);
 }
@@ -52,8 +54,8 @@ int main() {
 
     sem_init(&controlador, 0, 4); // Inicializando o semáforo e definindo seu contador para 4
 
-    pthread_mutex_init(&updtConclusao, NULL);
-    pthread_mutex_init(&updtExec, NULL);
+    sem_init(&updtConclusao, 0, 1);
+    sem_init(&updtExec, 0, 1);
 
     int i;
     for (i = 0; i < THREAD_NUM; i++) { // Loop para criar as threads
@@ -79,6 +81,6 @@ int main() {
     };
 
     sem_destroy(&controlador);
-    pthread_mutex_destroy(&updtConclusao);
-    pthread_mutex_destroy(&updtExec);
+    sem_destroy(&updtConclusao);
+    sem_destroy(&updtExec);
 }
